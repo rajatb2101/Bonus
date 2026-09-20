@@ -163,7 +163,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
   };
 
   const handleForgotPassword = () => {
-    setAuthFeedback('Default admin password is: rajat123 (or admin123). You can also change it anytime inside Admin Panel.');
+    setAuthFeedback('Please enter your authorized admin credentials.');
   };
 
   const handleSaveNewPassword = (e: React.FormEvent) => {
@@ -524,18 +524,9 @@ export const AdminView: React.FC<AdminViewProps> = ({
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs font-semibold text-zinc-300">
-                Password
-              </label>
-              <button
-                type="button"
-                onClick={handleForgotPassword}
-                className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline cursor-pointer"
-              >
-                Forgot password?
-              </button>
-            </div>
+            <label className="block text-xs font-semibold text-zinc-300 mb-1">
+              Password
+            </label>
             <input
               id="admin-password-input"
               type="password"
@@ -556,19 +547,6 @@ export const AdminView: React.FC<AdminViewProps> = ({
             {authLoading ? 'Verifying...' : 'Enter Admin Panel'}
           </button>
         </form>
-
-        <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs space-y-1.5">
-          <p className="text-amber-400 font-bold flex items-center gap-1.5">
-            <Lock className="w-3.5 h-3.5" /> Direct Admin Login
-          </p>
-          <div className="text-[11px] text-zinc-300 space-y-0.5">
-            <p>Admin Email: <span className="text-amber-300 font-mono font-semibold">rajatb419@gmail.com</span></p>
-            <p>Default Password: <span className="text-amber-300 font-mono font-semibold">rajat123</span></p>
-          </div>
-          <p className="text-[10px] text-zinc-400 pt-0.5 border-t border-white/5">
-            No Firebase Auth required. You can change this password anytime in Admin Settings.
-          </p>
-        </div>
 
         <div className="flex items-center justify-end text-[11px] text-zinc-400 pt-2 border-t border-white/5">
           <button
@@ -1593,7 +1571,7 @@ BUNNY_STREAM_CDN_HOSTNAME="vz-xxxx.b-cdn.net"`}
             </div>
 
             <p className="text-xs text-zinc-400">
-              Set a new custom password for <span className="text-amber-400 font-mono">rajatb419@gmail.com</span>. This will be saved directly for future admin logins.
+              Set a new custom password for the admin account. This will be saved directly for future admin logins.
             </p>
 
             <form onSubmit={handleSaveNewPassword} className="space-y-4">

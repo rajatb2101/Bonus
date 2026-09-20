@@ -48,7 +48,7 @@ export function verifyAdminCredentials(inputEmail: string, inputPass: string): {
   }
 
   if (cleanEmail !== ADMIN_EMAIL.toLowerCase()) {
-    return { success: false, message: `Unauthorized email address. Only ${ADMIN_EMAIL} is authorized.` };
+    return { success: false, message: 'Invalid admin email address or password.' };
   }
 
   const customPass = getStoredCustomPassword();
@@ -59,7 +59,7 @@ export function verifyAdminCredentials(inputEmail: string, inputPass: string): {
   if (!isValidPass) {
     return {
       success: false,
-      message: 'Incorrect admin password. Default password is: rajat123'
+      message: 'Invalid admin password. Please try again.'
     };
   }
 
