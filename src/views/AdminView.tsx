@@ -145,34 +145,55 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!authEmail || !authPassword) {
-      setAuthFeedback('Please enter both email and password.');
+      setAuthFeedback('Please enter both your admin email and password.');
+      return;
+    }
+    if (authPassword.length < 6) {
+      setAuthFeedback('Password must be at least 6 characters long.');
       return;
     }
     setAuthLoading(true);
     setAuthFeedback(null);
     try {
-      if (authMode === 'signin') {
-        await signIn(authEmail, authPassword);
-        showToast('Logged in successfully');
+      if (authMode === 'signup') {
+        await signUp(authEmail.trim(), authPassword);
+        showToast('Admin account created & authenticated!');
       } else {
-        await signUp(authEmail, authPassword);
-        showToast('Account created and logged in');
+        try {
+          await signIn(authEmail.trim(), authPassword);
+          showToast('Logged in successfully');
+        } catch (signInErr: any) {
+          // If the account does not exist yet in Firebase Auth, automatically create it with this password!
+          const code = signInErr?.code || '';
+          const msg = signInErr?.message || '';
+          if (
+            code === 'auth/user-not-found' ||
+            code === 'auth/invalid-credential' ||
+            msg.includes('user-not-found')
+          ) {
+            try {
+              await signUp(authEmail.trim(), authPassword);
+              showToast('Admin account activated & logged in!');
+              return;
+            } catch (signUpErr: any) {
+              if (signUpErr?.code === 'auth/email-already-in-use') {
+                setAuthFeedback('Incorrect password. Please verify your password or click "Forgot password?" to reset it.');
+                return;
+              }
+              throw signUpErr;
+            }
+          }
+          throw signInErr;
+        }
       }
     } catch (err: any) {
-      setAuthFeedback(err.message || 'Authentication error');
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setAuthLoading(true);
-    setAuthFeedback(null);
-    try {
-      await signInWithGoogle();
-      showToast('Logged in with Google');
-    } catch (err: any) {
-      setAuthFeedback(err.message || 'Google sign-in failed');
+      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
+        setAuthFeedback('Incorrect password. Click "Forgot password?" to reset it via Gmail.');
+      } else if (err?.code === 'auth/weak-password') {
+        setAuthFeedback('Password is too weak. Please use at least 6 characters.');
+      } else {
+        setAuthFeedback(err.message || 'Authentication error');
+      }
     } finally {
       setAuthLoading(false);
     }
@@ -186,8 +207,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
     setAuthLoading(true);
     setAuthFeedback(null);
     try {
-      await resetPassword(authEmail);
-      setAuthFeedback(`Password reset link sent to ${authEmail}. Please check your Gmail.`);
+      await resetPassword(authEmail.trim());
+      setAuthFeedback(`Password reset link sent to ${authEmail.trim()}. Please check your Gmail inbox.`);
       showToast('Reset email sent');
     } catch (err: any) {
       setAuthFeedback(err.message || 'Failed to send reset email');
@@ -573,51 +594,18 @@ export const AdminView: React.FC<AdminViewProps> = ({
             disabled={authLoading}
             className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
           >
-            {authLoading ? 'Authenticating...' : authMode === 'signin' ? 'Sign In to Admin Panel' : 'Register Admin Account'}
-          </button>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-white/10"></div>
-            <span className="flex-shrink mx-2 text-[10px] uppercase tracking-wider text-zinc-500 font-semibold">Or</span>
-            <div className="flex-grow border-t border-white/10"></div>
-          </div>
-
-          <button
-            id="admin-google-signin-btn"
-            type="button"
-            onClick={handleGoogleSignIn}
-            disabled={authLoading}
-            className="w-full py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-white/10 text-white font-semibold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-              />
-            </svg>
-            Continue with Google
+            {authLoading ? 'Authenticating...' : 'Enter Admin Panel'}
           </button>
         </form>
 
-        <div className="flex items-center justify-between text-[11px] text-zinc-400 pt-2 border-t border-white/5">
-          <button
-            onClick={() => setAuthMode(authMode === 'signin' ? 'signup' : 'signin')}
-            className="hover:text-amber-400 underline cursor-pointer"
-          >
-            {authMode === 'signin' ? 'First time setup? Create account' : 'Already have an account? Sign in'}
-          </button>
+        <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-[11px] text-zinc-400 space-y-1">
+          <p className="text-zinc-200 font-semibold">Admin Account Notice:</p>
+          <p>
+            Enter your admin email (<span className="text-amber-400 font-mono">rajatb419@gmail.com</span>) and any password of your choice (minimum 6 characters) to enter. If not already registered, it will be automatically activated.
+          </p>
+        </div>
+
+        <div className="flex items-center justify-end text-[11px] text-zinc-400 pt-2 border-t border-white/5">
           <button
             onClick={onClose}
             className="hover:text-white cursor-pointer"
