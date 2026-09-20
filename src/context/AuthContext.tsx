@@ -4,7 +4,10 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut as firebaseSignOut,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail,
+  GoogleAuthProvider,
+  signInWithPopup
 } from 'firebase/auth';
 import { auth } from '../firebase/config';
 import { getUserProfile, setUserProfile } from '../firebase/db';
@@ -17,6 +20,8 @@ interface AuthContextType {
   loading: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (email: string, pass: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
   clearError: () => void;
@@ -95,6 +100,43 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithGoogle = async () => {
+    setError(null);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      const cred = await signInWithPopup(auth, provider);
+      const isSuperAdmin = cred.user.email?.toLowerCase() === SUPER_ADMIN_EMAIL.toLowerCase();
+      let profile = await getUserProfile(cred.user.uid);
+      if (!profile) {
+        profile = {
+          uid: cred.user.uid,
+          email: cred.user.email || '',
+          role: isSuperAdmin ? 'admin' : 'viewer',
+          createdAt: new Date().toISOString(),
+        };
+        await setUserProfile(profile);
+      } else if (isSuperAdmin && profile.role !== 'admin') {
+        profile.role = 'admin';
+        await setUserProfile(profile);
+      }
+      setUserProfileState(profile);
+    } catch (err: any) {
+      setError(err.message || 'Failed to sign in with Google');
+      throw err;
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    setError(null);
+    try {
+      await sendPasswordResetEmail(auth, email);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send password reset email');
+      throw err;
+    }
+  };
+
   const logout = async () => {
     try {
       await firebaseSignOut(auth);
@@ -119,6 +161,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         signIn,
         signUp,
+        signInWithGoogle,
+        resetPassword,
         logout,
         error,
         clearError: () => setError(null)

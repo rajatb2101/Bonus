@@ -307,14 +307,8 @@ function AppContent() {
 
           <div className="flex items-center gap-4">
             <span className="text-[11px] text-zinc-500">
-              Firebase Firestore Backend • Cloudflare R2 / CDN Compatible
+              Decoupled CDN Streaming • Official India Got Latent Vault
             </span>
-            <button
-              onClick={() => handleNavigate('admin')}
-              className="text-zinc-400 hover:text-amber-400 cursor-pointer font-medium"
-            >
-              Admin Access
-            </button>
           </div>
         </div>
       </footer>
