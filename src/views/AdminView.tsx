@@ -22,6 +22,7 @@ import {
   RefreshCw,
   LogOut,
   Lock,
+  Key,
   FileVideo,
   Image as ImageIcon
 } from 'lucide-react';
@@ -55,14 +56,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
   onRefreshData,
   onClose,
 }) => {
-  const { user, isAdmin, signIn, signUp, signInWithGoogle, resetPassword, logout, error: authError } = useAuth();
+  const { user, isAdmin, signIn, updateAdminPassword, logout } = useAuth();
 
   // Auth form states
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authEmail, setAuthEmail] = useState<string>('');
   const [authPassword, setAuthPassword] = useState<string>('');
   const [authLoading, setAuthLoading] = useState<boolean>(false);
   const [authFeedback, setAuthFeedback] = useState<string | null>(null);
+  const [showPasswordChangeModal, setShowPasswordChangeModal] = useState<boolean>(false);
+  const [newPasswordInput, setNewPasswordInput] = useState<string>('');
 
   // Admin tabs
   const [activeTab, setActiveTab] = useState<'dashboard' | 'playlists' | 'episodes' | 'storage'>('dashboard');
@@ -148,73 +150,32 @@ export const AdminView: React.FC<AdminViewProps> = ({
       setAuthFeedback('Please enter both your admin email and password.');
       return;
     }
-    if (authPassword.length < 6) {
-      setAuthFeedback('Password must be at least 6 characters long.');
-      return;
-    }
     setAuthLoading(true);
     setAuthFeedback(null);
     try {
-      if (authMode === 'signup') {
-        await signUp(authEmail.trim(), authPassword);
-        showToast('Admin account created & authenticated!');
-      } else {
-        try {
-          await signIn(authEmail.trim(), authPassword);
-          showToast('Logged in successfully');
-        } catch (signInErr: any) {
-          // If the account does not exist yet in Firebase Auth, automatically create it with this password!
-          const code = signInErr?.code || '';
-          const msg = signInErr?.message || '';
-          if (
-            code === 'auth/user-not-found' ||
-            code === 'auth/invalid-credential' ||
-            msg.includes('user-not-found')
-          ) {
-            try {
-              await signUp(authEmail.trim(), authPassword);
-              showToast('Admin account activated & logged in!');
-              return;
-            } catch (signUpErr: any) {
-              if (signUpErr?.code === 'auth/email-already-in-use') {
-                setAuthFeedback('Incorrect password. Please verify your password or click "Forgot password?" to reset it.');
-                return;
-              }
-              throw signUpErr;
-            }
-          }
-          throw signInErr;
-        }
-      }
+      await signIn(authEmail.trim(), authPassword.trim());
+      showToast('Authenticated successfully. Welcome Admin!');
     } catch (err: any) {
-      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
-        setAuthFeedback('Incorrect password. Click "Forgot password?" to reset it via Gmail.');
-      } else if (err?.code === 'auth/weak-password') {
-        setAuthFeedback('Password is too weak. Please use at least 6 characters.');
-      } else {
-        setAuthFeedback(err.message || 'Authentication error');
-      }
+      setAuthFeedback(err.message || 'Authentication failed. Please verify credentials.');
     } finally {
       setAuthLoading(false);
     }
   };
 
-  const handleForgotPassword = async () => {
-    if (!authEmail) {
-      setAuthFeedback('Please enter your email in the field above to receive the password reset link.');
+  const handleForgotPassword = () => {
+    setAuthFeedback('Default admin password is: rajat123 (or admin123). You can also change it anytime inside Admin Panel.');
+  };
+
+  const handleSaveNewPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPasswordInput || newPasswordInput.trim().length < 4) {
+      showToast('Password must be at least 4 characters long', 'error');
       return;
     }
-    setAuthLoading(true);
-    setAuthFeedback(null);
-    try {
-      await resetPassword(authEmail.trim());
-      setAuthFeedback(`Password reset link sent to ${authEmail.trim()}. Please check your Gmail inbox.`);
-      showToast('Reset email sent');
-    } catch (err: any) {
-      setAuthFeedback(err.message || 'Failed to send reset email');
-    } finally {
-      setAuthLoading(false);
-    }
+    updateAdminPassword(newPasswordInput.trim());
+    setShowPasswordChangeModal(false);
+    setNewPasswordInput('');
+    showToast('Admin password updated successfully!');
   };
 
   // Open Playlist Modal
@@ -567,15 +528,13 @@ export const AdminView: React.FC<AdminViewProps> = ({
               <label className="block text-xs font-semibold text-zinc-300">
                 Password
               </label>
-              {authMode === 'signin' && (
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline cursor-pointer"
-                >
-                  Forgot password?
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleForgotPassword}
+                className="text-[11px] text-amber-400 hover:text-amber-300 hover:underline cursor-pointer"
+              >
+                Forgot password?
+              </button>
             </div>
             <input
               id="admin-password-input"
@@ -594,14 +553,20 @@ export const AdminView: React.FC<AdminViewProps> = ({
             disabled={authLoading}
             className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs tracking-wider uppercase transition-all shadow-lg shadow-amber-500/20 cursor-pointer disabled:opacity-50"
           >
-            {authLoading ? 'Authenticating...' : 'Enter Admin Panel'}
+            {authLoading ? 'Verifying...' : 'Enter Admin Panel'}
           </button>
         </form>
 
-        <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-[11px] text-zinc-400 space-y-1">
-          <p className="text-zinc-200 font-semibold">Admin Account Notice:</p>
-          <p>
-            Enter your admin email (<span className="text-amber-400 font-mono">rajatb419@gmail.com</span>) and any password of your choice (minimum 6 characters) to enter. If not already registered, it will be automatically activated.
+        <div className="p-3.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-xs space-y-1.5">
+          <p className="text-amber-400 font-bold flex items-center gap-1.5">
+            <Lock className="w-3.5 h-3.5" /> Direct Admin Login
+          </p>
+          <div className="text-[11px] text-zinc-300 space-y-0.5">
+            <p>Admin Email: <span className="text-amber-300 font-mono font-semibold">rajatb419@gmail.com</span></p>
+            <p>Default Password: <span className="text-amber-300 font-mono font-semibold">rajat123</span></p>
+          </div>
+          <p className="text-[10px] text-zinc-400 pt-0.5 border-t border-white/5">
+            No Firebase Auth required. You can change this password anytime in Admin Settings.
           </p>
         </div>
 
@@ -697,6 +662,16 @@ export const AdminView: React.FC<AdminViewProps> = ({
           >
             <RefreshCw className="w-3.5 h-3.5" />
             Refresh
+          </button>
+
+          <button
+            id="admin-change-pass-btn"
+            onClick={() => setShowPasswordChangeModal(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-900 border border-white/10 hover:border-amber-500/50 text-xs font-semibold text-zinc-300 hover:text-amber-400 cursor-pointer transition-all"
+            title="Change admin login password"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Password</span>
           </button>
 
           <button
@@ -1592,6 +1567,65 @@ BUNNY_STREAM_CDN_HOSTNAME="vz-xxxx.b-cdn.net"`}
                   className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
                   {epSaving ? 'Saving Episode...' : 'Save to Firestore'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Change Password Modal */}
+      {showPasswordChangeModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#181926] border border-white/15 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
+                  <Key className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-white">Change Admin Password</h3>
+              </div>
+              <button
+                onClick={() => setShowPasswordChangeModal(false)}
+                className="text-zinc-400 hover:text-white cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-zinc-400">
+              Set a new custom password for <span className="text-amber-400 font-mono">rajatb419@gmail.com</span>. This will be saved directly for future admin logins.
+            </p>
+
+            <form onSubmit={handleSaveNewPassword} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-zinc-300 mb-1">
+                  New Password
+                </label>
+                <input
+                  id="new-admin-password-input"
+                  type="password"
+                  value={newPasswordInput}
+                  onChange={(e) => setNewPasswordInput(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full bg-zinc-900 border border-white/10 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-white focus:outline-none focus:border-amber-500"
+                  required
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setShowPasswordChangeModal(false)}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-white cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  id="save-new-password-btn"
+                  type="submit"
+                  className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold cursor-pointer"
+                >
+                  Update Password
                 </button>
               </div>
             </form>

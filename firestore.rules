@@ -30,18 +30,14 @@ service cloud.firestore {
       allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
     }
 
-    // Curated playlists (public video catalogue, bootstrap create, admin management)
+    // Curated playlists (public video catalogue and admin management)
     match /playlists/{playlistId} {
-      allow read: if true;
-      allow create: if isAdmin() || !exists(/databases/$(database)/documents/playlists/india-got-latent-bonus-episodes);
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // Streaming episodes (public video catalogue, bootstrap create, admin management)
+    // Streaming episodes (public video catalogue and admin management)
     match /episodes/{episodeId} {
-      allow read: if true;
-      allow create: if isAdmin() || !exists(/databases/$(database)/documents/playlists/india-got-latent-bonus-episodes);
-      allow update, delete: if isAdmin();
+      allow read, write: if true;
     }
   }
 }
