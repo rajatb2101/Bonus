@@ -35,7 +35,8 @@ export const WatchView: React.FC<WatchViewProps> = ({
   }, [episode.id]);
 
   const handleShare = () => {
-    navigator.clipboard.writeText(window.location.href);
+    const url = `${window.location.origin}/watch/${episode.id}`;
+    navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };

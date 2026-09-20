@@ -50,29 +50,82 @@ function AppContent() {
     loadData();
   }, [loadData]);
 
-  // URL routing synchronization: supports /admin pathname and hash navigation
+  // URL routing synchronization: supports clean paths (/admin, /watch/:id, etc.), hash routes, and query params
   useEffect(() => {
     const syncRouteFromUrl = () => {
-      const pathname = window.location.pathname.toLowerCase().replace(/\/+$/, '');
+      const pathname = window.location.pathname.toLowerCase().replace(/\/+$/, '') || '/';
       const hash = window.location.hash.replace(/^#\/?/, '').toLowerCase();
+      const searchParams = new URLSearchParams(window.location.search);
 
-      if (pathname === '/admin' || hash === 'admin') {
+      // 1. Admin Console detection (works with /admin, #admin, ?admin, /admin.html)
+      const isAdmin =
+        pathname === '/admin' ||
+        pathname.endsWith('/admin') ||
+        pathname.endsWith('/admin.html') ||
+        hash === 'admin' ||
+        hash === '/admin' ||
+        hash.startsWith('admin') ||
+        searchParams.has('admin') ||
+        searchParams.get('view') === 'admin';
+
+      if (isAdmin) {
         setCurrentView('admin');
-      } else if (hash.startsWith('watch/')) {
-        const epId = hash.replace('watch/', '');
+        return;
+      }
+
+      // 2. Watch View detection (/watch/:id, #watch/:id, ?watch=:id)
+      const watchPathMatch = window.location.pathname.match(/\/watch\/([^/?#]+)/i);
+      const watchHashMatch = window.location.hash.match(/watch\/([^/?#]+)/i);
+      const watchQueryId = searchParams.get('watch') || searchParams.get('episode');
+      const epId = watchPathMatch?.[1] || watchHashMatch?.[1] || watchQueryId;
+      if (epId) {
         setSelectedEpisodeId(epId);
         setCurrentView('watch');
-      } else if (hash.startsWith('playlist/')) {
-        const plId = hash.replace('playlist/', '');
+        return;
+      }
+
+      // 3. Playlist View detection (/playlist/:id, #playlist/:id, ?playlist=:id)
+      const playlistPathMatch = window.location.pathname.match(/\/playlist\/([^/?#]+)/i);
+      const playlistHashMatch = window.location.hash.match(/playlist\/([^/?#]+)/i);
+      const playlistQueryId = searchParams.get('playlist');
+      const plId = playlistPathMatch?.[1] || playlistHashMatch?.[1] || playlistQueryId;
+      if (plId) {
         setSelectedPlaylistId(plId);
         setCurrentView('playlist');
-      } else if (hash === 'playlists' || pathname === '/playlists') {
-        setCurrentView('playlists');
-      } else if (hash === 'search' || pathname === '/search') {
-        setCurrentView('search');
-      } else {
-        setCurrentView('home');
+        return;
       }
+
+      // 4. Playlists directory detection (/playlists, #playlists, ?view=playlists)
+      const isPlaylists =
+        pathname === '/playlists' ||
+        pathname.endsWith('/playlists') ||
+        hash === 'playlists' ||
+        hash === '/playlists' ||
+        searchParams.get('view') === 'playlists';
+
+      if (isPlaylists) {
+        setCurrentView('playlists');
+        return;
+      }
+
+      // 5. Search detection (/search, #search, ?q=..., ?search=...)
+      const isSearch =
+        pathname === '/search' ||
+        pathname.endsWith('/search') ||
+        hash === 'search' ||
+        hash === '/search' ||
+        searchParams.has('q') ||
+        searchParams.has('search');
+
+      if (isSearch) {
+        const q = searchParams.get('q') || searchParams.get('search');
+        if (q) setSearchQuery(q);
+        setCurrentView('search');
+        return;
+      }
+
+      // Default home view
+      setCurrentView('home');
     };
 
     syncRouteFromUrl();
@@ -107,35 +160,34 @@ function AppContent() {
     document.title = 'India Got Latent Bonus Episodes — Exclusive Stage Performances';
   }, [currentView, selectedEpisodeId, selectedPlaylistId, episodes, playlists]);
 
-  // Navigation handlers
+  // Unified navigation handler: updates path history and syncs view
   const handleNavigate = (view: 'home' | 'playlists' | 'playlist' | 'watch' | 'search' | 'admin', id?: string) => {
-    if (view === 'watch' && id) {
-      setSelectedEpisodeId(id);
-      window.location.hash = `watch/${id}`;
-    } else if (view === 'playlist' && id) {
-      setSelectedPlaylistId(id);
-      window.location.hash = `playlist/${id}`;
-    } else if (view === 'admin') {
-      if (window.location.pathname !== '/admin') {
-        window.history.pushState(null, '', '/admin');
-      }
-      window.location.hash = 'admin';
+    let targetPath = '/';
+    if (view === 'admin') {
+      targetPath = '/admin';
     } else if (view === 'playlists') {
-      if (window.location.pathname === '/admin') {
-        window.history.pushState(null, '', '/');
-      }
-      window.location.hash = 'playlists';
+      targetPath = '/playlists';
+    } else if (view === 'playlist' && id) {
+      targetPath = `/playlist/${id}`;
+      setSelectedPlaylistId(id);
+    } else if (view === 'watch' && id) {
+      targetPath = `/watch/${id}`;
+      setSelectedEpisodeId(id);
     } else if (view === 'search') {
-      if (window.location.pathname === '/admin') {
-        window.history.pushState(null, '', '/');
-      }
-      window.location.hash = 'search';
+      targetPath = '/search';
     } else {
-      if (window.location.pathname === '/admin') {
-        window.history.pushState(null, '', '/');
-      }
-      window.location.hash = 'home';
+      targetPath = '/';
     }
+
+    try {
+      if (window.location.pathname !== targetPath || window.location.hash) {
+        window.history.pushState({ view, id }, '', targetPath);
+      }
+    } catch {
+      // Fallback for sandboxed iframes without pushState permission
+      window.location.hash = targetPath.replace(/^\//, '');
+    }
+
     setCurrentView(view);
   };
 
