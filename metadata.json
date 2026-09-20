@@ -1,0 +1,6 @@
+{
+  "name": "India Got Latent Bonus Episodes",
+  "description": "Stream exclusive bonus episodes, uncut stages, and behind-the-scenes performances from India Got Latent.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

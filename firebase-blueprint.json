@@ -1,0 +1,67 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with authorization role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique Firebase Auth UID" },
+        "email": { "type": "string", "description": "User email address" },
+        "role": { "type": "string", "enum": ["admin", "viewer"], "description": "Access role" },
+        "createdAt": { "type": "string", "description": "ISO timestamp of registration" }
+      },
+      "required": ["uid", "email", "role", "createdAt"]
+    },
+    "Playlist": {
+      "title": "Playlist",
+      "description": "Video playlist collection such as India Got Latent seasons or special sets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Playlist unique ID" },
+        "title": { "type": "string", "description": "Playlist display title" },
+        "description": { "type": "string", "description": "Playlist description" },
+        "thumbnailUrl": { "type": "string", "description": "Cover thumbnail URL" },
+        "order": { "type": "number", "description": "Display order weight" },
+        "published": { "type": "boolean", "description": "Whether visible to public users" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" }
+      },
+      "required": ["id", "title", "order", "published"]
+    },
+    "Episode": {
+      "title": "Episode",
+      "description": "Video episode containing streaming video references and details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Episode unique ID" },
+        "playlistId": { "type": "string", "description": "Parent playlist ID" },
+        "episodeNumber": { "type": "number", "description": "Episode sequence number" },
+        "title": { "type": "string", "description": "Episode title" },
+        "description": { "type": "string", "description": "Episode synopsis or description" },
+        "thumbnailUrl": { "type": "string", "description": "Thumbnail preview image URL" },
+        "videoUrl": { "type": "string", "description": "Direct video URL or CDN stream endpoint" },
+        "videoStorageKey": { "type": "string", "description": "Cloudflare R2 or S3 object key" },
+        "duration": { "type": "string", "description": "Formatted duration string e.g. 42:15" },
+        "order": { "type": "number", "description": "Episode sorting order" },
+        "published": { "type": "boolean", "description": "Whether visible to public visitors" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp" }
+      },
+      "required": ["id", "playlistId", "episodeNumber", "title", "order", "published"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered app user profiles and roles"
+    },
+    "/playlists/{playlistId}": {
+      "schema": "Playlist",
+      "description": "Curated video playlists"
+    },
+    "/episodes/{episodeId}": {
+      "schema": "Episode",
+      "description": "Streaming episodes with video keys and metadata"
+    }
+  }
+}

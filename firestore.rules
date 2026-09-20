@@ -1,0 +1,47 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.email == 'rajatb419@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection test document
+    match /test/{docId} {
+      allow read: if true;
+    }
+
+    // User profile documents (PII isolation & ownership)
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+    }
+
+    // Curated playlists (public video catalogue, bootstrap create, admin management)
+    match /playlists/{playlistId} {
+      allow read: if true;
+      allow create: if isAdmin() || !exists(/databases/$(database)/documents/playlists/india-got-latent-bonus-episodes);
+      allow update, delete: if isAdmin();
+    }
+
+    // Streaming episodes (public video catalogue, bootstrap create, admin management)
+    match /episodes/{episodeId} {
+      allow read: if true;
+      allow create: if isAdmin() || !exists(/databases/$(database)/documents/playlists/india-got-latent-bonus-episodes);
+      allow update, delete: if isAdmin();
+    }
+  }
+}
